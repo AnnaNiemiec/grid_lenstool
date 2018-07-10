@@ -1,0 +1,3 @@
+Example script to create a multiscale grid + lenstool input file from kappa.fits, with strong lensing region SL.reg, galaxy catalogue galcat.cat and WL source catalogue arclet.dat. Use:
+`./mk_grid.sh`
+
