@@ -68,14 +68,12 @@ The following scripts are included:
 
 
   ### USAGE:
-  `mk_holes.py [-h] sdens region ra_ref dec_ref`
+  `mk_holes.py [-h] sdens region`
   
   Positional arguments:
   
     sdens       Catalogue of grid potentials, built with fit_hex.py
     region      DS9 region file to filter
-    ra_ref      Reference RA
-    dec_ref     Reference Dec
 
   Optional arguments:
   
@@ -92,15 +90,13 @@ The following scripts are included:
   ## build_hex.py: Create Lenstool input file for grid mode
   
   ### USAGE:
-  `build_hex.py [-h] [--mask] sdens cmcat zl ra dec srccat`
+  `build_hex.py [-h] [--mask] sdens cmcat zl srccat`
   
   Positional arguments:
   
     sdens       Catalogue of grid potentials, built with fit_hex.py
     cmcat       Galaxy catalogue
     zl          Lens redshift
-    ra          Reference RA
-    dec         Reference Dec
     srccat      Source catalogue
 
   Optional arguments:

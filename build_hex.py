@@ -23,10 +23,6 @@ if __name__ == '__main__':
                             help='Galaxy catalogue')
         parser.add_argument('zl', type=float,
                             help='Lens redshift')
-        parser.add_argument('ra', type=float,
-                            help='Reference RA')
-        parser.add_argument('dec', type=float,
-                            help='Reference Dec')
         parser.add_argument('srccat',
                             help='Source catalogue')
         parser.add_argument('--mask', dest='mask', action='store_true', default=True, help        ='Define if there is a mask column in sdens to show the SL region, default=True')
@@ -39,15 +35,26 @@ if __name__ == '__main__':
         sdens = args.sdens
 	cmcat = args.cmcat
 	zl = args.zl
-	ra = args.ra
-	dec = args.dec
 	srccat = args.srccat
 	mask = args.mask
 	#------------------------------------------------------------------------#
 	outfile = 'hex.par'
 
 
-	print "Params = {} {} {} {} {} {} \n".format(sdens, cmcat, zl, ra, dec, srccat)
+	print "Params = {} {} {} {} \n".format(sdens, cmcat, zl, srccat)
+
+
+	# Read reference RA Dec from sdens file
+        #------------------------------------------------------------------------#
+	f = open(sdens, 'r')
+        lines = f.readlines()
+        f.close()
+        for line in lines:
+                if line[0] == "#":
+                        ra = float(line.split()[2])
+                        dec = float(line.split()[3])
+                        print ra, dec
+        #------------------------------------------------------------------------#
 
 
 	# Read the catalogue of cluster members
