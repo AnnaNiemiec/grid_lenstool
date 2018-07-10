@@ -112,10 +112,6 @@ if __name__ == '__main__':
                             help='Catalogue of grid potentials, built with fit_hex.py')
         parser.add_argument('region',
                             help='DS9 region file to filter')
-	parser.add_argument('ra_ref', type=float,
-			    help='Reference RA')
-	parser.add_argument('dec_ref', type=float,
-			    help='Reference Dec')
         args = parser.parse_args()
 	outfile = 'sdens_holes.dat'
 
@@ -123,8 +119,19 @@ if __name__ == '__main__':
 	#------------------------------------------------------------------------#
 	sdens = args.sdens
 	region = args.region
-	ra_ref = args.ra_ref
-	dec_ref = args.dec_ref
+	#------------------------------------------------------------------------#
+
+
+	# Read RA_ref, Dec_ref from sdens file
+	#------------------------------------------------------------------------#
+	f = open(sdens, 'r')
+	lines = f.readlines()
+	f.close()
+	for line in lines:
+		if line[0] == "#":
+			ra_ref = float(line.split()[2])
+			dec_ref = float(line.split()[3])
+			print ra_ref, dec_ref
 	#------------------------------------------------------------------------#
 
 
