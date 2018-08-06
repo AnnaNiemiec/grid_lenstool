@@ -10,7 +10,7 @@ srccat=arclets.dat	# WL sources catalogue
 
 ../fit_hex.py $map $th -ll $LL
 ../mk_holes.py $map $region
-../build_hex.py sdens_holes.dat $gcat $zl $srccat
+../build_hex.py sdens_holes.dat $gcat $zl $srccat --mask
 
 
 
