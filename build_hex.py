@@ -25,7 +25,8 @@ if __name__ == '__main__':
                             help='Lens redshift')
         parser.add_argument('srccat',
                             help='Source catalogue')
-        parser.add_argument('--mask', dest='mask', action='store_true', default=True, help        ='Define if there is a mask column in sdens to show the SL region, default=True')
+        parser.add_argument('--mask', dest='mask', action='store_true', 
+			    help='Define if there is a mask column in sdens to show the SL region')
         args = parser.parse_args()
 
 	
@@ -78,6 +79,7 @@ if __name__ == '__main__':
 	# Read the catalogue of positions, rc, rcut for all the clumps
         #------------------------------------------------------------------------#
 	nmsgrid = nlens
+	ntot = nlens
 	if os.path.isfile(sdens):
 		f = open(sdens)
 		lines = f.readlines()
@@ -93,6 +95,7 @@ if __name__ == '__main__':
 			masked = []
 		for line in lines:
 			if line[0] == '#': continue
+			ntot+=1
 			i+=1
 			idd.append(line.split()[0])
 			x.append(float(line.split()[1]))
@@ -160,11 +163,11 @@ if __name__ == '__main__':
         end\n".format(cmcat, smstar, zl))
 
 	l = 0	
-	for i in range(nlens - nmsgrid):
+	for i in range(ntot - nmsgrid):
 		if mask:
 			if masked[i]:
 				continue
-		fout.write("potential {} \n".format(l))
+		fout.write("potential {} \n".format(l+1))
 		fout.write("        profil 81 \n")
 		fout.write("        x_centre  {} \n".format(x[i]))
 		fout.write("        y_centre  {} \n".format(y[i]))
