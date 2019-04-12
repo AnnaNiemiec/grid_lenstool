@@ -16,7 +16,18 @@ def rel2abs(ra_rel, dec_rel, ra_ref, dec_ref):
 
 	dec = dec_rel/3600. + dec_ref
 	ra = ra_ref - ra_rel/(3600.*np.cos(dec*np.pi/180.))
+	ra = ra_ref - ra_rel/(3600.*np.cos(dec*np.pi/180.))
+	ra = ra_ref - ra_rel/(3600.*np.cos(dec*np.pi/180.))
 	return [ra, dec]
+
+def abs2rel(ra, dec, ra_ref, dec_ref):
+	''' Covert absolute coordinates to relative'''
+	dec_rel = (dec - dec_ref)*3600.
+	ra_rel = np.zeros(len(dec_rel))
+	ra_rel[abs(ra - ra_ref) < 300.] = -(ra[abs(ra - ra_ref) < 300.] - ra_ref)*3600.*np.cos(dec_ref/180.*np.pi)
+	ra_rel[(ra - ra_ref) < -300.] = -(ra[(ra - ra_ref) < -300.] - ra_ref + 360.)*3600.*np.cos(dec_ref/180.*np.pi)
+	ra_rel[(ra - ra_ref) > 300.] = -(ra[(ra - ra_ref) > 300.] - ra_ref - 360.)*3600.*np.cos(dec_ref/180.*np.pi)
+	return [ra_rel, dec_rel]	
 
 
 
@@ -156,18 +167,22 @@ if __name__ == '__main__':
 			for j in range(len(points)/2):
 				edgex.append(float(points[2*j]))
 				edgey.append(float(points[2*j+1]))
+	edgex = np.array(edgex)
+	edgey = np.array(edgey)
 	#------------------------------------------------------------------------#
-
 
 	ok = np.zeros(n)
 	# Convert to absolute positions
 	#------------------------------------------------------------------------#
-	ra, dec = rel2abs(tin['ra_rel'], tin['dec_rel'], ra_ref, dec_ref)
+	#ra, dec = rel2abs(tin['ra_rel'], tin['dec_rel'], ra_ref, dec_ref)
+	ra = tin['ra_rel']
+	dec = tin['dec_rel']
+	edgex_rel, edgey_rel = abs2rel(edgex, edgey, ra_ref, dec_ref)
 	#------------------------------------------------------------------------#
 
 	# Check if in region
 	#------------------------------------------------------------------------#
-	ok = inpoly2(ra, dec, edgex, edgey)
+	ok = inpoly2(ra, dec, edgex_rel, edgey_rel)
 	#------------------------------------------------------------------------#
 
 

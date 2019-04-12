@@ -20,7 +20,8 @@ def main(fits_map, threshold, lowlim, highlim, ratio, regular):
 	# Read image width and height and check if square
 	#------------------------------------------------------------------------#
 	width = len(data[:,0])
-	height = len(data[0,:])
+	height = len(data[0,:])	
+	print width, height
 	if width != height:
 		print "ERROR: {} must be a squared image \n".format(fits_map)
 		return 
@@ -61,6 +62,7 @@ def main(fits_map, threshold, lowlim, highlim, ratio, regular):
 	else:
 		print grid.nlens
 		grid = regular_grid(grid, width)
+		grid, sdens0 = build_frr(grid, hdr)
 	#------------------------------------------------------------------------#
 
 	print grid.rc
@@ -88,13 +90,15 @@ def main(fits_map, threshold, lowlim, highlim, ratio, regular):
 
 
 def regular_grid(grid, width):
+	print "width = ", width
 	idd = 0
-	nmax = int(np.sqrt((grid.nlens))/2)
-	rc =  width/pow(2., grid.lowlim+1)
+	nmax = int(np.sqrt(grid.nlens)/2*np.sqrt(3)/2)
+	rc =  width/(2.*nmax)
+	#rc =  width/pow(2., grid.lowlim+1)
 	grid.rc[:] = rc
 	grid.rcut[:] = rc*grid.ratio
-	for j in np.arange(-nmax, nmax):
-		for i in np.arange(-nmax, nmax-np.mod(np.abs(j), 2)):
+	for j in np.arange(0, (2.*nmax*2./np.sqrt(3))):
+		for i in np.arange(0, 2.*nmax-np.mod(np.abs(j), 2)):
 			grid.x[idd] = i*rc + np.mod(abs(j), 2)*rc/2.
 			grid.y[idd] = j*rc*np.sqrt(3.)/2.
 			idd+=1
@@ -116,7 +120,13 @@ def build_frr(grid, hdr):
 	w = wcs.WCS(hdr)
 	xabs, yabs = w.all_pix2world(xpos, ypos, 1)
 	grid.y = (yabs - hdr['CRVAL2'])*3600.
-	grid.x = -(xabs - hdr['CRVAL1'])*3600.*np.cos(hdr['CRVAL2']/180.*np.pi)
+
+	#grid.x = -(xabs - hdr['CRVAL1'])*3600.*np.cos(hdr['CRVAL2']/180.*np.pi)
+
+	grid.x[abs(xabs - hdr['CRVAL1']) < 300.] = -(xabs[abs(xabs - hdr['CRVAL1']) < 300.] - hdr['CRVAL1'])*3600.*np.cos(hdr['CRVAL2']/180.*np.pi)
+	grid.x[(xabs - hdr['CRVAL1']) < -300] = -(xabs[(xabs - hdr['CRVAL1']) < -300] - hdr['CRVAL1'] + 360.)*3600.*np.cos(hdr['CRVAL2']/180.*np.pi)
+	grid.x[(xabs - hdr['CRVAL1']) > 300] = -(xabs[(xabs - hdr['CRVAL1']) > 300] - hdr['CRVAL1'] - 360.)*3600.*np.cos(hdr['CRVAL2']/180.*np.pi)
+
 	pix2sec = get_pix2sec(hdr)
 	grid.rc*=pix2sec
 	grid.rcut*=pix2sec
@@ -235,6 +245,7 @@ def multiscale_grid(grid, data):
 	rci = width/2.
 	rcuti = rci*ratio
 	#------------------------------------------------------------------------#
+
 
 	#Initial positions of the 7 first grid nodes
 	#------------------------------------------------------------------------#
