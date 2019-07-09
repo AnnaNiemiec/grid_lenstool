@@ -159,32 +159,35 @@ if __name__ == '__main__':
 	fregion = open(region, 'r')
 	lines = fregion.readlines()
 	fregion.close()
-	edgex = []
-	edgey = []
+	ok = np.zeros(n)
 	for line in lines:
 		if line.split('(')[0] == 'polygon':
+			edgex = []
+			edgey = []
 			points = line.split('(')[1][:-2].split(',')
 			for j in range(len(points)/2):
 				edgex.append(float(points[2*j]))
 				edgey.append(float(points[2*j+1]))
-	edgex = np.array(edgex)
-	edgey = np.array(edgey)
-	#------------------------------------------------------------------------#
+			edgex = np.array(edgex)
+			edgey = np.array(edgey)
+			#--------------------------------------------------------#
 
-	ok = np.zeros(n)
-	# Convert to absolute positions
-	#------------------------------------------------------------------------#
-	#ra, dec = rel2abs(tin['ra_rel'], tin['dec_rel'], ra_ref, dec_ref)
-	ra = tin['ra_rel']
-	dec = tin['dec_rel']
-	edgex_rel, edgey_rel = abs2rel(edgex, edgey, ra_ref, dec_ref)
-	#------------------------------------------------------------------------#
+			ok_temp = np.zeros(n)
+			# Convert to absolute positions
+			#--------------------------------------------------------#
+			#ra, dec = rel2abs(tin['ra_rel'], tin['dec_rel'], ra_ref, dec_ref)
+			ra = tin['ra_rel']
+			dec = tin['dec_rel']
+			edgex_rel, edgey_rel = abs2rel(edgex, edgey, ra_ref, dec_ref)
+			#--------------------------------------------------------#
 
-	# Check if in region
-	#------------------------------------------------------------------------#
-	ok = inpoly2(ra, dec, edgex_rel, edgey_rel)
-	#------------------------------------------------------------------------#
+			# Check if in region
+			#--------------------------------------------------------#
+			ok_temp = inpoly2(ra, dec, edgex_rel, edgey_rel)
+			#--------------------------------------------------------#
+			ok+=ok_temp
 
+	ok[ok > 1] = 1
 
 	# Add column to table and write
 	#------------------------------------------------------------------------#
