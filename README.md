@@ -102,8 +102,7 @@ The following scripts are included:
   Optional arguments:
   
     -h, --help  show this help message and exit
-    --mask      Define if there is a mask column in sdens to show the SL region,
-                default=True
+    --mask      Define if there is a mask column in sdens to show the SL region
                 
   ### OUPUT:
   **hex.par**: Lenstool input file containing the grid potentials.
