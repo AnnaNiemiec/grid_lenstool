@@ -20,10 +20,15 @@ def main(fits_map, threshold, lowlim, highlim, ratio, regular):
 	# Read image width and height and check if square
 	#------------------------------------------------------------------------#
 	width = len(data[:,0])
-	height = len(data[0,:])
+	height = len(data[0,:])	
+	print width, height
 	if width != height:
-		print "ERROR: {} must be a squared image \n".format(fits_map)
-		return 
+		print "!ERROR!: {} must be a squared image \n".format(fits_map)
+		#return 
+	if width < height:
+		height = width 
+	elif height < width:
+		width = height
 	#------------------------------------------------------------------------#
 	
 	# Read astrometry from fits header
@@ -56,26 +61,33 @@ def main(fits_map, threshold, lowlim, highlim, ratio, regular):
 		grid.y = grid.y[0:grid.nlens]
 		grid.rc = grid.rc[0:grid.nlens]
 		grid.rcut = grid.rcut[0:grid.nlens]
-		grid, sdens0 = build_frr(grid, hdr)
+		grid, sdens0, frr = build_frr(grid, hdr, data)
 		#------------------------------------------------------------------------#
 	else:
 		print grid.nlens
 		grid = regular_grid(grid, width)
+		grid, sdens0, frr = build_frr(grid, hdr, data)
 	#------------------------------------------------------------------------#
 
 	print grid.rc
 
-	"""
+	
 	# Plot the points and rc radii
 	#------------------------------------------------------------------------#
-	circle(grid)
-	plt.plot([x[1:7], x[1]], [y[1:7], y[1]], 'r-', lw=5)
+	theta = np.linspace(0., 2*np.pi)
+	for xc,yc,rc in zip(grid.x, grid.y, grid.rc):
+		xx = xc + rc*np.sin(theta)
+		yy = yc + rc*np.cos(theta)
+		plt.plot(xx, yy, 'k')
 	plt.savefig('grid_t{}.pdf'.format(grid.threshold))
 	#------------------------------------------------------------------------#
-	"""
+	
 
-
-	a = np.zeros(grid.nlens)
+	if inverse:
+		a = invert_sdens(sdens0, frr)
+		#fit_sdens
+	else:
+		a = np.zeros(grid.nlens)
 	
 	f = open('sdens_t{}.dat'.format(grid.threshold), 'w')
 	f.write('#REFERENCE 3 {} {} \n'.format(ra0, dec0))
@@ -86,28 +98,57 @@ def main(fits_map, threshold, lowlim, highlim, ratio, regular):
 	return 0
 
 
+def invert_sdens(sdens0, frr):
+	"""
+	Invert analytically the observed sdens and return the vdisp for each clump
+	"""
+	a = np.dot(np.linalg.inv(frr), sdens0)
+	# ou alors a = np.dot(np.linalg.inv(frr).T, sdens0.T).T ????
+	return a
+
+
+def fit_sdens(nlens, sdens0, a):
+	"""
+	Perform a fit to the measure surface density sdens0
+	"""
+
+
 
 def regular_grid(grid, width):
+	print "width = ", width
 	idd = 0
-	nmax = int(np.sqrt((grid.nlens))/2)
-	rc =  width/pow(2., grid.lowlim+1)
+	nmax = int(np.sqrt(grid.nlens)/2*np.sqrt(3)/2)
+	rc =  width/(2.*nmax)
+	#rc =  width/pow(2., grid.lowlim+1)
 	grid.rc[:] = rc
 	grid.rcut[:] = rc*grid.ratio
-	for j in np.arange(-nmax, nmax):
-		for i in np.arange(-nmax, nmax-np.mod(np.abs(j), 2)):
+	for j in np.arange(0, (2.*nmax*2./np.sqrt(3))):
+		for i in np.arange(0, 2.*nmax-np.mod(np.abs(j), 2)):
 			grid.x[idd] = i*rc + np.mod(abs(j), 2)*rc/2.
 			grid.y[idd] = j*rc*np.sqrt(3.)/2.
 			idd+=1
 	return grid
 
 
-def build_frr(grid, hdr):
+def build_frr(grid, hdr, data):
 	"""
 	Convert grid to relative arcsec and build the frr and sdens0 matrix/vector
 	"""
 
 	# Scaling kappa <-> absolute mass
+	#scale = 1.e12 pour ce qui sort de Lenstool ?
 	scale = 1
+
+        # Find the limits of the field in pixels, no stats if less than 3x3 pixels
+        #------------------------------------------------------------------------#
+        width = len(data[:,0])
+        height = len(data[0,:])
+        if width < height :
+                height = width
+        elif height < width :
+                width = height
+        if width*height < 9:
+                return 0
 	
 	# Convert x, y, rc and rcut from pixel to relative arcsec
 	#------------------------------------------------------------------------#
@@ -116,7 +157,13 @@ def build_frr(grid, hdr):
 	w = wcs.WCS(hdr)
 	xabs, yabs = w.all_pix2world(xpos, ypos, 1)
 	grid.y = (yabs - hdr['CRVAL2'])*3600.
-	grid.x = -(xabs - hdr['CRVAL1'])*3600.*np.cos(hdr['CRVAL2']/180.*np.pi)
+
+	#grid.x = -(xabs - hdr['CRVAL1'])*3600.*np.cos(hdr['CRVAL2']/180.*np.pi)
+
+	grid.x[abs(xabs - hdr['CRVAL1']) < 300.] = -(xabs[abs(xabs - hdr['CRVAL1']) < 300.] - hdr['CRVAL1'])*3600.*np.cos(hdr['CRVAL2']/180.*np.pi)
+	grid.x[(xabs - hdr['CRVAL1']) < -300] = -(xabs[(xabs - hdr['CRVAL1']) < -300] - hdr['CRVAL1'] + 360.)*3600.*np.cos(hdr['CRVAL2']/180.*np.pi)
+	grid.x[(xabs - hdr['CRVAL1']) > 300] = -(xabs[(xabs - hdr['CRVAL1']) > 300] - hdr['CRVAL1'] - 360.)*3600.*np.cos(hdr['CRVAL2']/180.*np.pi)
+
 	pix2sec = get_pix2sec(hdr)
 	grid.rc*=pix2sec
 	grid.rcut*=pix2sec
@@ -129,21 +176,20 @@ def build_frr(grid, hdr):
 	#------------------------------------------------------------------------#
 	sdens0 = np.zeros(grid.nlens)
 
-	"""
-	# Read the mass density at the points of the mapping
-	#------------------------------------------------------------------------#
-	sdens0 = np.zeros(grid.nlens)
-	xim = np.copy(xpos)
-	xim[xim<0] = 0
-	xim[xim>(width-1)] = 0
-	yim = np.copy(ypos)
-	yim[yim<0] = 0
-	yim[yim>(width-1)] = 0
-	sdens0 = data[np.round(xim), np.round(yim)]*scale	#Msol/pixel
-	#------------------------------------------------------------------------#
-	"""
+	if inverse:
+		# Read the mass density at the points of the mapping
+		#----------------------------------------------------------------#
+		xim = np.copy(xpos)
+		xim[xim<0] = 0
+		xim[xim>(width-1)] = width-1
+		yim = np.copy(ypos)
+		yim[yim<0] = 0
+		yim[yim>(width-1)] = width-1
+		sdens0 = data[np.round(xim).astype(int), np.round(yim).astype(int)]*scale	#Msol/pixel
+		#----------------------------------------------------------------#
 	
-	return grid, sdens0
+	
+	return grid, sdens0, frr
 
 
 def sdenspiemd(rr, grid, sigma):
@@ -156,7 +202,7 @@ def sdenspiemd(rr, grid, sigma):
 	
 	invGG = 1.02751e6	# valeur ajustee 'a la main avec un profil PIEMD'
 	frr = np.copy(rr)
-	for i in range(len(grid.rc) -1):
+	for i in range(len(grid.rc)):
 		frr[i,:] = sigma*sigma*grid.rcut[i]/2*invGG/(grid.rcut[i] - grid.rc[i])*(1./np.sqrt(grid.rc[i]**2 + rr[i,:]) - 1./np.sqrt(grid.rcut[i]**2 + rr[i,:]))
 	return frr
 	
@@ -227,6 +273,10 @@ def multiscale_grid(grid, data):
 	#------------------------------------------------------------------------#
 	width = len(data[:,0])#-2
         height = len(data[0,:])#-2
+	if width < height :
+		height = width
+	elif height < width :
+		width = height
 	#------------------------------------------------------------------------#
 
 	# Initial values for rc and rcut --> because we are sure that we go at
@@ -235,6 +285,7 @@ def multiscale_grid(grid, data):
 	rci = width/2.
 	rcuti = rci*ratio
 	#------------------------------------------------------------------------#
+
 
 	#Initial positions of the 7 first grid nodes
 	#------------------------------------------------------------------------#
@@ -439,6 +490,10 @@ def stat_sdens_tri(xi, yi, data):
 	#------------------------------------------------------------------------#
 	width = len(data[:,0])
         height = len(data[0,:])
+	if width < height :
+		height = width
+	elif height < width :
+		width = height
 	if width*height < 9:
 		return 0
 	#------------------------------------------------------------------------#
@@ -542,7 +597,10 @@ if __name__ == '__main__':
 			    type=float, help='Minimum number of triangle split, default=1')
 	parser.add_argument('-r', action='store', dest='ratio', default=3, 
 			    type=float, help='Ratio rcut/rc, default=3')
-	parser.add_argument('--reg', dest='regular', action='store_true', default=False, help='Creates regular grid, with lowlim triangle splits, default=False')
+	parser.add_argument('--reg', dest='regular', action='store_true', default=False, 
+			    help='Creates regular grid, with lowlim triangle splits, default=False')
+	parser.add_argument('--inv', dest='inverse', action='store_true', default=False, 
+			    help='')
 	args = parser.parse_args()
 
 	# On redefini les parametres d'input
@@ -553,6 +611,7 @@ if __name__ == '__main__':
 	highlim = args.highlim
 	ratio = args.ratio
 	regular = args.regular
+	inverse = args.inverse
 	#------------------------------------------------------------------------#
 
 	t0 = time.time()

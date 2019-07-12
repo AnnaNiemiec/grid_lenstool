@@ -25,7 +25,8 @@ if __name__ == '__main__':
                             help='Lens redshift')
         parser.add_argument('srccat',
                             help='Source catalogue')
-        parser.add_argument('--mask', dest='mask', action='store_true', default=True, help        ='Define if there is a mask column in sdens to show the SL region, default=True')
+        parser.add_argument('--mask', dest='mask', action='store_true', 
+			    help='Define if there is a mask column in sdens to show the SL region')
         args = parser.parse_args()
 
 	
@@ -78,6 +79,7 @@ if __name__ == '__main__':
 	# Read the catalogue of positions, rc, rcut for all the clumps
         #------------------------------------------------------------------------#
 	nmsgrid = nlens
+	ntot = nlens
 	if os.path.isfile(sdens):
 		f = open(sdens)
 		lines = f.readlines()
@@ -93,8 +95,8 @@ if __name__ == '__main__':
 			masked = []
 		for line in lines:
 			if line[0] == '#': continue
+			ntot+=1
 			i+=1
-			nlens+=1
 			idd.append(line.split()[0])
 			x.append(float(line.split()[1]))
 			y.append(float(line.split()[2]))
@@ -103,6 +105,10 @@ if __name__ == '__main__':
 			vdisp.append(float(line.split()[5]))
 			if mask:
 				masked.append(float(line.split()[6]))
+				if float(line.split()[6])  == 0:
+					nlens+=1
+			else:
+				nlens+=1
 		print '{} RBFs found in {} \n'.format(i, sdens)
 		xmin = min(x)
 		xmax = max(x)
@@ -155,12 +161,13 @@ if __name__ == '__main__':
         cutkpc  0 50 50 \n\
         zlens {} \n\
         end\n".format(cmcat, smstar, zl))
-	
-	for i in range(nlens - nmsgrid):
+
+	l = 0	
+	for i in range(ntot - nmsgrid):
 		if mask:
 			if masked[i]:
 				continue
-		fout.write("potential {} \n".format(i))
+		fout.write("potential {} \n".format(l+1))
 		fout.write("        profil 81 \n")
 		fout.write("        x_centre  {} \n".format(x[i]))
 		fout.write("        y_centre  {} \n".format(y[i]))
@@ -169,6 +176,7 @@ if __name__ == '__main__':
 		fout.write("        v_disp  {} \n".format(vdisp[i]))
 		fout.write("        z_lens  {} \n".format(zl))
 		fout.write("        end \n")
+		l+=1
 
 	fout.write("cosmologie \n\
         H0         70.000 \n\
